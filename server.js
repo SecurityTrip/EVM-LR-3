@@ -31,11 +31,18 @@ connection.connect(err => {
 // Добавление магазина
 app.post('/add-shop', (req, res) => {
     const { email, payment_for_delivery } = req.body;
-    if (!email || !payment_for_delivery) {
+
+    // Убедимся, что все поля заполнены
+    if (!email) {
         return res.status(400).send('Все поля обязательны');
     }
+
+    // Преобразуем значение чекбокса
+    const payment = payment_for_delivery === "on" ? "Yes" : "No";
+
+    // SQL-запрос на добавление
     const sql = "INSERT INTO shop (email, payment_for_delivery) VALUES (?, ?)";
-    connection.query(sql, [email, payment_for_delivery], (err) => {
+    connection.query(sql, [email, payment], (err) => {
         if (err) {
             console.error(err);
             res.status(500).send('Ошибка добавления магазина');
@@ -44,6 +51,7 @@ app.post('/add-shop', (req, res) => {
         }
     });
 });
+
 
 // Добавление товара
 app.post('/add-product', (req, res) => {
@@ -65,11 +73,15 @@ app.post('/add-product', (req, res) => {
 // Добавление заказа
 app.post('/add-order', (req, res) => {
     const { id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmation } = req.body;
-    if (!id_order || !shop_id_shop || !product_id_product || !order_date || !order_time || !quantity || !client_name || !client_phone || !confirmation) {
+    if (!id_order || !shop_id_shop || !product_id_product || !order_date || !order_time || !quantity || !client_name || !client_phone) {
         return res.status(400).send('Все поля обязательны');
     }
+
+    // Преобразуем значение чекбокса
+    const confirmationCheck = confirmation === "on" ? "Confirmed" : "Unconfirmed";
+
     const sql = "INSERT INTO `order` (id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    connection.query(sql, [id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmation], (err) => {
+    connection.query(sql, [id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmationCheck], (err) => {
         if (err) {
             console.error(err);
             res.status(500).send('Ошибка добавления заказа');
