@@ -42,8 +42,6 @@ function renderTable(data, tableName) {
     const container = document.getElementById("table-container");
     const title = document.getElementById("table-title");
 
-
-
     if (!data.length) {
         container.innerHTML = "<p>Данные отсутствуют</p>";
         title.textContent = `Таблица: ${tableName}`;
@@ -51,6 +49,10 @@ function renderTable(data, tableName) {
     }
 
     title.textContent = `Таблица: ${tableName}`;
+
+    // Добавляем кнопку добавления записи под заголовком
+    const addButtonHtml = `<button onclick="createRecord('${tableName}')">Добавить запись</button>`;
+
     let tableHtml = "<table><thead><tr>";
 
     // Генерация заголовков
@@ -85,11 +87,11 @@ function renderTable(data, tableName) {
     });
 
     tableHtml += "</tbody></table>";
-    container.innerHTML = tableHtml;
 
-    // Добавить кнопку для создания новой записи
-    container.innerHTML += `<button onclick="createRecord('${tableName}')">Добавить запись</button>`;
+    // Объединяем таблицу и кнопку
+    container.innerHTML = addButtonHtml + tableHtml;
 }
+
 
 // Удаление записи
 async function deleteRecord(tableName, id) {
@@ -160,5 +162,32 @@ function editRecord(tableName, id) {
         alert("Ошибка: некорректный формат данных");
     }
 }
+
+function openModal(title, bodyContent, actionCallback) {
+    const modal = document.getElementById("modal");
+    const modalTitle = document.getElementById("modal-title");
+    const modalBody = document.getElementById("modal-body");
+    const modalActionButton = document.getElementById("modal-action-button");
+
+    modalTitle.textContent = title; // Устанавливаем заголовок
+    modalBody.innerHTML = bodyContent; // Устанавливаем контент
+    modalActionButton.onclick = actionCallback; // Устанавливаем действие
+
+    modal.style.display = "block"; // Показываем модальное окно
+}
+
+function closeModal() {
+    const modal = document.getElementById("modal");
+    modal.style.display = "none"; // Скрываем модальное окно
+}
+
+// Закрытие модального окна при клике вне его
+window.onclick = function (event) {
+    const modal = document.getElementById("modal");
+    if (event.target === modal) {
+        closeModal();
+    }
+};
+
 
 
