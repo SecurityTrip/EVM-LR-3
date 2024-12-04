@@ -32,7 +32,7 @@ ENGINE = InnoDB;
 -- Table `evm`.`product`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `evm`.`product` (
-  `id_product` INT NOT NULL,
+  `id_product` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(45) NULL,
   `firm` VARCHAR(45) NULL,
   `model` VARCHAR(45) NULL,
@@ -47,8 +47,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 -- Table `evm`.`order`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `evm`.`order` (
-  `id_order` INT NOT NULL,
+CREATE TABLE IF NOT EXISTS `evm`.`orders` (
+  `id_order` INT NOT NULL AUTO_INCREMENT,
   `shop_id_shop` INT NOT NULL,
   `product_id_product` INT NOT NULL,
   `order_date` DATE NULL,
@@ -77,7 +77,7 @@ ENGINE = InnoDB;
 -- Table `evm`.`delivery`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `evm`.`delivery` (
-  `id_delivery` INT NOT NULL,
+  `id_delivery` INT NOT NULL AUTO_INCREMENT,
   `order_id_order` INT NOT NULL,
   `date` VARCHAR(45) NULL,
   `address` VARCHAR(45) NULL,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS `evm`.`delivery` (
   INDEX `fk_delivery_order1_idx` (`order_id_order` ASC) VISIBLE,
   CONSTRAINT `fk_delivery_order1`
     FOREIGN KEY (`order_id_order`)
-    REFERENCES `evm`.`order` (`id_order`)
+    REFERENCES `evm`.`orders` (`id_order`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
@@ -97,7 +97,7 @@ ENGINE = InnoDB;
 -- Table `evm`.`product_has_shop`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `evm`.`product_has_shop` (
-  `product_id_product` INT NOT NULL,
+  `product_id_product` INT NOT NULL AUTO_INCREMENT,
   `shop_id_shop` INT NOT NULL,
   PRIMARY KEY (`product_id_product`, `shop_id_shop`),
   INDEX `fk_product_has_shop_shop1_idx` (`shop_id_shop` ASC) VISIBLE,
@@ -158,7 +158,7 @@ INSERT INTO `evm`.`product` (`id_product`, `name`, `firm`, `model`, `tech_spec`,
 (15, 'VR Headset', 'Oculus', 'Quest 2', '256GB', '400.00', '2 years', 'oculus_quest2.jpg');
 
 
-INSERT INTO `evm`.`order` (`id_order`, `order_date`, `shop_id_shop`, `product_id_product`, `order_time`, `quantity`, `client_name`, `client_phone`, `confirmation`) VALUES
+INSERT INTO `evm`.`orders` (`id_order`, `order_date`, `shop_id_shop`, `product_id_product`, `order_time`, `quantity`, `client_name`, `client_phone`, `confirmation`) VALUES
 (1, '2024-09-01', 1, 1, '10:00:00', '2', 'John Doe', '+1234567890', 'Confirmed'),
 (2, '2024-09-02', 2, 2, '11:30:00', '1', 'Jane Smith', '+0987654321', 'Confirmed'),
 (3, '2024-09-03', 3, 3, '09:45:00', '5', 'Bill Gates', '+9876543210', 'Confirmed'),

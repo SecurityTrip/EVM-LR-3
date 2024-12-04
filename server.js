@@ -1,10 +1,12 @@
 const express = require('express');
 const path = require('path');
 const mysql = require("mysql2");
+const cors = require("cors");
 
 const app = express();
 
 // Middleware для обработки JSON и данных форм
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -25,6 +27,98 @@ connection.connect(err => {
         console.log("Подключение к серверу MySQL успешно установлено");
     }
 });
+
+
+
+//CRUD
+// Добавление записи
+app.post("/api/:table", (req, res) => {
+    const { table } = req.params;
+    const data = req.body;
+
+    const allowedTables = ["delivery", "order", "product", "shop"];
+    if (!allowedTables.includes(table)) {
+        return res.status(400).json({ error: "Таблица недоступна" });
+    }
+
+    connection.query(`INSERT INTO ${table} SET ?`, data, (err, result) => {
+        if (err) {
+            console.error("Ошибка добавления:", err.message);
+            return res.status(500).json({ error: "Ошибка сервера" });
+        }
+        res.json({ message: "Запись добавлена", insertId: result.insertId });
+    });
+});
+
+// Получение данных из таблицы
+app.get("/api/:table", (req, res) => {
+    const table = req.params.table;
+
+    // Проверка на доступные таблицы
+    const allowedTables = ["delivery", "orders", "product", "shop"];
+    if (!allowedTables.includes(table)) {
+        return res.status(400).json({ error: "Таблица недоступна" });
+    }
+
+    // Запрос к базе данных
+    connection.query(`SELECT * FROM ${table}`, (err, results) => {
+        if (err) {
+            console.error("Ошибка запроса:", err.message);
+            return res.status(500).json({ error: "Ошибка сервера" });
+        }
+        res.json(results);
+    });
+});
+
+// Изменение записи
+app.put("/api/:table/:id", (req, res) => {
+    const { table, id } = req.params;
+    const data = req.body;
+
+    const allowedTables = ["delivery", "order", "product", "shop"];
+    if (!allowedTables.includes(table)) {
+        return res.status(400).json({ error: "Таблица недоступна" });
+    }
+
+    connection.query(`UPDATE ${table} SET ? WHERE id = ?`, [data, id], (err, result) => {
+        if (err) {
+            console.error("Ошибка изменения:", err.message);
+            return res.status(500).json({ error: "Ошибка сервера" });
+        }
+        res.json({ message: "Запись обновлена", affectedRows: result.affectedRows });
+    });
+});
+
+
+// Удаление записи
+app.delete("/api/:table/:id", (req, res) => {
+    const { table, id } = req.params;
+
+    // Список разрешенных таблиц и их ключей
+    const tableKeys = {
+        delivery: "id_delivery",
+        order: "id_orders",
+        product: "id_product",
+        shop: "id_shop",
+    };
+
+    // Проверяем, существует ли таблица
+    const primaryKey = tableKeys[table];
+    if (!primaryKey) {
+        return res.status(400).json({ error: "Таблица недоступна" });
+    }
+
+    // Выполняем запрос на удаление
+    connection.query(`DELETE FROM ${table} WHERE ${primaryKey} = ?`, [id], (err, result) => {
+        if (err) {
+            console.error("Ошибка удаления:", err.message);
+            return res.status(500).json({ error: "Ошибка сервера" });
+        }
+        res.json({ message: "Запись удалена", affectedRows: result.affectedRows });
+    });
+});
+
+
 
 // Обработчики форм
 
