@@ -45,7 +45,7 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `evm`.`order`
+-- Table `evm`.`orders`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `evm`.`orders` (
   `id_order` INT NOT NULL AUTO_INCREMENT,

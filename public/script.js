@@ -40,24 +40,66 @@ async function fetchTableData(tableKey) {
 //CRUD
 // Добавление записи
 function createRecord(tableName) {
+    // Определяем обязательные поля для каждой таблицы
+    const tableFields = {
+        shop: ["email", "payment_for_delivery"],
+        product: ["name", "firm", "model", "tech_spec", "price", "warranty_period", "image"],
+        orders: ["shop_id_shop", "product_id_product", "order_date", "quantity", "client_name", "client_phone", "confirmation"],
+        delivery: ["order_id_order", "date", "address", "client_name", "courier_name"],
+        product_has_shop: ["product_id_product", "shop_id_shop"],
+    };
+
+    const requiredFields = tableFields[tableName] || [];
+    if (!requiredFields.length) {
+        alert("Неизвестная таблица.");
+        return;
+    }
+
+    // Генерируем форму с обязательными полями
+    const formFields = requiredFields
+        .map(
+            (field) => `
+                <label for="${field}">${field}:</label>
+                <input type="text" id="${field}" name="${field}" required>
+                <br>
+            `
+        )
+        .join("");
+
     openModal(
         "Добавить запись",
-        `<form id="create-form">
-            <label for="field1">Поле 1:</label>
-            <input type="text" id="field1" name="field1" required>
-            <br>
-            <label for="field2">Поле 2:</label>
-            <input type="text" id="field2" name="field2" required>
-        </form>`,
+        `<form id="create-form">${formFields}</form>`,
         () => {
             const form = document.getElementById("create-form");
-            const formData = new FormData(form);
-            // Выполнить AJAX-запрос для создания записи
-            console.log("Создать запись", Object.fromEntries(formData));
-            closeModal();
+            const formData = Object.fromEntries(new FormData(form));
+
+            // Выполняем запрос на сервер для добавления записи
+            fetch(`/api/${tableName}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Ошибка при добавлении записи");
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    console.log("Запись добавлена:", data);
+                    closeModal();
+                    refreshTable(tableName); // Обновляем таблицу
+                })
+                .catch((error) => {
+                    console.error("Ошибка:", error);
+                    alert("Не удалось добавить запись.");
+                });
         }
     );
 }
+
 
 // Рендер таблицы с кнопками управления
 function renderTable(data, tableName) {
@@ -92,7 +134,6 @@ function renderTable(data, tableName) {
 
     // Генерация строк
     data.forEach((row) => {
-        console.log(row);
         tableHtml += "<tr>";
         Object.values(row).forEach((value) => {
             tableHtml += `<td>${value}</td>`;

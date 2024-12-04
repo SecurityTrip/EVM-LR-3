@@ -36,19 +36,43 @@ app.post("/api/:table", (req, res) => {
     const { table } = req.params;
     const data = req.body;
 
-    const allowedTables = ["delivery", "order", "product", "shop"];
-    if (!allowedTables.includes(table)) {
+    // Определяем разрешённые таблицы и их поля
+    const tableFields = {
+        shop: ["email", "payment_for_delivery"],
+        product: ["name", "firm", "model", "tech_spec", "price", "warranty_period", "image"],
+        orders: ["shop_id_shop", "product_id_product", "order_date", "order_time", "quantity", "client_name", "client_phone", "confirmation"],
+        delivery: ["order_id_order", "date", "address", "client_name", "courier_name"],
+        product_has_shop: ["product_id_product", "shop_id_shop"],
+    };
+
+    // Проверка наличия таблицы в списке разрешённых
+    if (!Object.keys(tableFields).includes(table)) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    connection.query(`INSERT INTO ${table} SET ?`, data, (err, result) => {
+    // Проверка наличия обязательных полей
+    const requiredFields = tableFields[table];
+    const missingFields = requiredFields.filter((field) => !(field in data));
+    if (missingFields.length) {
+        return res.status(400).json({
+            error: "Отсутствуют обязательные поля",
+            missingFields,
+        });
+    }
+
+    // Генерация запроса
+    const sql = `INSERT INTO ${table} (${requiredFields.join(", ")}) VALUES (${requiredFields.map(() => "?").join(", ")})`;
+
+    // Выполнение запроса
+    connection.query(sql, requiredFields.map((field) => data[field]), (err, result) => {
         if (err) {
             console.error("Ошибка добавления:", err.message);
-            return res.status(500).json({ error: "Ошибка сервера" });
+            return res.status(500).json({ error: "Ошибка сервера", details: err.message });
         }
         res.json({ message: "Запись добавлена", insertId: result.insertId });
     });
 });
+
 
 // Получение данных из таблицы
 app.get("/api/:table", (req, res) => {
