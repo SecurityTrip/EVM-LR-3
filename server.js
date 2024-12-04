@@ -20,6 +20,7 @@ const connection = mysql.createConnection({
     database: "evm",
     password: "admin"
 });
+
 connection.connect(err => {
     if (err) {
         console.error("Ошибка подключения к базе данных:", err.message);
@@ -42,7 +43,6 @@ app.post("/api/:table", (req, res) => {
         product: ["name", "firm", "model", "tech_spec", "price", "warranty_period", "image"],
         orders: ["shop_id_shop", "product_id_product", "order_date", "order_time", "quantity", "client_name", "client_phone", "confirmation"],
         delivery: ["order_id_order", "date", "address", "client_name", "courier_name"],
-        product_has_shop: ["product_id_product", "shop_id_shop"],
     };
 
     // Проверка наличия таблицы в списке разрешённых

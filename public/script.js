@@ -40,13 +40,13 @@ async function fetchTableData(tableKey) {
 //CRUD
 // Добавление записи
 function createRecord(tableName) {
+
     // Определяем обязательные поля для каждой таблицы
     const tableFields = {
         shop: ["email", "payment_for_delivery"],
         product: ["name", "firm", "model", "tech_spec", "price", "warranty_period", "image"],
-        orders: ["shop_id_shop", "product_id_product", "order_date", "quantity", "client_name", "client_phone", "confirmation"],
+        orders: ["shop_id_shop", "product_id_product", "order_date", "order_time", "quantity", "client_name", "client_phone", "confirmation"],
         delivery: ["order_id_order", "date", "address", "client_name", "courier_name"],
-        product_has_shop: ["product_id_product", "shop_id_shop"],
     };
 
     const requiredFields = tableFields[tableName] || [];
