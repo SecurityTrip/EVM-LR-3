@@ -59,16 +59,26 @@ function renderTable(data, tableName) {
     });
     tableHtml += "<th>Действия</th></tr></thead><tbody>";
 
+    const tablePrimaryKeys = {
+        delivery: "id_delivery",
+        order: "id_orders",
+        product: "id_product",
+        shop: "id_shop",
+    };
+
     // Генерация строк
     data.forEach((row) => {
         tableHtml += "<tr>";
         Object.values(row).forEach((value) => {
             tableHtml += `<td>${value}</td>`;
         });
+
+        const primaryKey = tablePrimaryKeys[tableName]; // Получаем ключ для текущей таблицы
+
         tableHtml += `
       <td>
-        <button onclick="deleteRecord('${tableName}', ${row['id_' + tableName]})">Удалить</button>
-        <button onclick="editRecord('${tableName}', ${row['id_' + tableName]})">Изменить</button>
+        <button onclick="deleteRecord('${tableName}', ${row[primaryKey]})">Удалить</button>
+        <button onclick="editRecord('${tableName}', ${row[primaryKey]})">Изменить</button>
       </td>
     `;
         tableHtml += "</tr>";
