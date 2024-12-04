@@ -37,6 +37,28 @@ async function fetchTableData(tableKey) {
     }
 }
 
+//CRUD
+// Добавление записи
+function createRecord(tableName) {
+    openModal(
+        "Добавить запись",
+        `<form id="create-form">
+            <label for="field1">Поле 1:</label>
+            <input type="text" id="field1" name="field1" required>
+            <br>
+            <label for="field2">Поле 2:</label>
+            <input type="text" id="field2" name="field2" required>
+        </form>`,
+        () => {
+            const form = document.getElementById("create-form");
+            const formData = new FormData(form);
+            // Выполнить AJAX-запрос для создания записи
+            console.log("Создать запись", Object.fromEntries(formData));
+            closeModal();
+        }
+    );
+}
+
 // Рендер таблицы с кнопками управления
 function renderTable(data, tableName) {
     const container = document.getElementById("table-container");
@@ -63,13 +85,14 @@ function renderTable(data, tableName) {
 
     const tablePrimaryKeys = {
         delivery: "id_delivery",
-        order: "id_orders",
+        orders: "id_order",
         product: "id_product",
         shop: "id_shop",
     };
 
     // Генерация строк
     data.forEach((row) => {
+        console.log(row);
         tableHtml += "<tr>";
         Object.values(row).forEach((value) => {
             tableHtml += `<td>${value}</td>`;
@@ -92,76 +115,107 @@ function renderTable(data, tableName) {
     container.innerHTML = addButtonHtml + tableHtml;
 }
 
+function editRecord(tableName, id) {
+    // Получаем данные записи по ID
+    fetch(`/api/${tableName}/${id}`)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Ошибка при получении записи");
+            }
+            return response.json();
+        })
+        .then((record) => {
+            // Генерируем форму с текущими значениями
+            const formFields = Object.keys(record)
+                .map(
+                    (key) => `
+                        <label for="${key}">${key}:</label>
+                        <input type="text" id="${key}" name="${key}" value="${record[key]}" required>
+                        <br>
+                    `
+                )
+                .join("");
+
+            // Открываем модальное окно с формой
+            openModal(
+                "Изменить запись",
+                `<form id="edit-form">${formFields}</form>`,
+                () => {
+                    const form = document.getElementById("edit-form");
+                    const formData = Object.fromEntries(new FormData(form));
+
+                    // Отправляем обновлённые данные на сервер
+                    fetch(`/api/${tableName}/${id}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(formData),
+                    })
+                        .then((response) => {
+                            if (!response.ok) {
+                                throw new Error("Ошибка при изменении записи");
+                            }
+                            return response.json();
+                        })
+                        .then((data) => {
+                            console.log("Запись изменена:", data);
+                            closeModal();
+                            refreshTable(tableName); // Обновляем таблицу
+                        })
+                        .catch((error) => {
+                            console.error("Ошибка:", error);
+                            alert("Не удалось изменить запись.");
+                        });
+                }
+            );
+        })
+        .catch((error) => {
+            console.error("Ошибка при получении записи:", error);
+            alert("Не удалось загрузить данные записи.");
+        });
+}
+
 
 // Удаление записи
-async function deleteRecord(tableName, id) {
-    if (!confirm("Вы уверены, что хотите удалить эту запись?")) return;
+function deleteRecord(tableName, id) {
+    openModal(
+        "Удалить запись",
+        `<p>Вы уверены, что хотите удалить запись с ID: ${id}?</p>`,
+        () => {
+            fetch(`/api/${tableName}/${id}`, {
+                method: "DELETE",
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error("Ошибка при удалении записи");
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    console.log("Запись удалена:", data);
+                    closeModal();
+                    refreshTable(tableName); // Обновить таблицу
+                })
+                .catch((error) => {
+                    console.error("Ошибка:", error);
+                    alert("Не удалось удалить запись.");
+                });
+        }
+    );
+}
 
-    try {
-        const response = await fetch(`${apiUrl}/${tableName}/${id}`, {
-            method: "DELETE",
+function refreshTable(tableName) {
+    fetch(`/api/${tableName}`)
+        .then((response) => response.json())
+        .then((data) => {
+            renderTable(data, tableName); // Обновляем таблицу
+        })
+        .catch((error) => {
+            console.error("Ошибка при обновлении таблицы:", error);
         });
-
-        if (!response.ok) throw new Error("Ошибка при удалении записи");
-
-        alert("Запись удалена");
-        await fetchTableData(tableName);
-    } catch (error) {
-        console.error("Ошибка:", error);
-    }
 }
 
-// Добавление записи
-function createRecord(tableName) {
-    const formData = prompt("Введите данные в формате JSON (например, {\"name\": \"Магазин\"}):");
-    if (!formData) return;
-
-    try {
-        const data = JSON.parse(formData);
-        fetch(`${apiUrl}/${tableName}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        })
-            .then((response) => {
-                if (!response.ok) throw new Error("Ошибка при добавлении записи");
-                return response.json();
-            })
-            .then(() => {
-                alert("Запись добавлена");
-                fetchTableData(tableName);
-            });
-    } catch (error) {
-        console.error("Ошибка:", error);
-        alert("Ошибка: некорректный формат данных");
-    }
-}
-
-// Изменение записи
-function editRecord(tableName, id) {
-    const formData = prompt("Введите новые данные в формате JSON (например, {\"name\": \"Новый магазин\"}):");
-    if (!formData) return;
-
-    try {
-        const data = JSON.parse(formData);
-        fetch(`${apiUrl}/${tableName}/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        })
-            .then((response) => {
-                if (!response.ok) throw new Error("Ошибка при изменении записи");
-                return response.json();
-            })
-            .then(() => {
-                alert("Запись обновлена");
-                fetchTableData(tableName);
-            });
-    } catch (error) {
-        console.error("Ошибка:", error);
-        alert("Ошибка: некорректный формат данных");
-    }
-}
 
 function openModal(title, bodyContent, actionCallback) {
     const modal = document.getElementById("modal");

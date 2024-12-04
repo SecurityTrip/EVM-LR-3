@@ -75,12 +75,21 @@ app.put("/api/:table/:id", (req, res) => {
     const { table, id } = req.params;
     const data = req.body;
 
-    const allowedTables = ["delivery", "order", "product", "shop"];
-    if (!allowedTables.includes(table)) {
+    // Список разрешенных таблиц и их ключей
+    const tableKeys = {
+        delivery: "id_delivery",
+        orders: "id_order",
+        product: "id_product",
+        shop: "id_shop",
+    };
+
+    // Проверяем, существует ли таблица
+    const primaryKey = tableKeys[table];
+    if (!primaryKey) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    connection.query(`UPDATE ${table} SET ? WHERE id = ?`, [data, id], (err, result) => {
+    connection.query(`UPDATE ${table} SET ? WHERE ${primaryKey} = ?`, [data, id], (err, result) => {
         if (err) {
             console.error("Ошибка изменения:", err.message);
             return res.status(500).json({ error: "Ошибка сервера" });
@@ -119,88 +128,40 @@ app.delete("/api/:table/:id", (req, res) => {
 });
 
 
+// Получение записи по ID
+app.get("/api/:table/:id", (req, res) => {
+    const { table, id } = req.params;
 
-// Обработчики форм
+    const tablePrimaryKeys = {
+        delivery: "id_delivery",
+        orders: "id_order",
+        product: "id_product",
+        shop: "id_shop",
+    };
 
-// Добавление магазина
-app.post('/add-shop', (req, res) => {
-    const { email, payment_for_delivery } = req.body;
+    const primaryKey = tablePrimaryKeys[table];
 
-    // Убедимся, что все поля заполнены
-    if (!email) {
-        return res.status(400).send('Все поля обязательны');
+    if (!primaryKey) {
+        return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    // Преобразуем значение чекбокса
-    const payment = payment_for_delivery === "on" ? "Yes" : "No";
-
-    // SQL-запрос на добавление
-    const sql = "INSERT INTO shop (email, payment_for_delivery) VALUES (?, ?)";
-    connection.query(sql, [email, payment], (err) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Ошибка добавления магазина');
-        } else {
-            res.send('Магазин успешно добавлен');
+    connection.query(
+        `SELECT * FROM ${table} WHERE ${primaryKey} = ?`,
+        [id],
+        (err, results) => {
+            if (err) {
+                console.error("Ошибка при получении записи:", err.message);
+                return res.status(500).json({ error: "Ошибка сервера" });
+            }
+            if (results.length === 0) {
+                return res.status(404).json({ error: "Запись не найдена" });
+            }
+            res.json(results[0]); // Возвращаем первую запись
         }
-    });
+    );
 });
 
 
-// Добавление товара
-app.post('/add-product', (req, res) => {
-    const { id_product, name, firm, model, tech_spec, price, warranty_period, image } = req.body;
-    if (!id_product || !name || !firm || !model || !tech_spec || !price || !warranty_period || !image) {
-        return res.status(400).send('Все поля обязательны');
-    }
-    const sql = "INSERT INTO product (id_product, name, firm, model, tech_spec, price, warranty_period, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    connection.query(sql, [id_product, name, firm, model, tech_spec, price, warranty_period, image], (err) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Ошибка добавления товара');
-        } else {
-            res.send('Товар успешно добавлен');
-        }
-    });
-});
-
-// Добавление заказа
-app.post('/add-order', (req, res) => {
-    const { id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmation } = req.body;
-    if (!id_order || !shop_id_shop || !product_id_product || !order_date || !order_time || !quantity || !client_name || !client_phone) {
-        return res.status(400).send('Все поля обязательны');
-    }
-
-    // Преобразуем значение чекбокса
-    const confirmationCheck = confirmation === "on" ? "Confirmed" : "Unconfirmed";
-
-    const sql = "INSERT INTO `order` (id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    connection.query(sql, [id_order, shop_id_shop, product_id_product, order_date, order_time, quantity, client_name, client_phone, confirmationCheck], (err) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Ошибка добавления заказа');
-        } else {
-            res.send('Заказ успешно добавлен');
-        }
-    });
-});
-
-// Добавление доставки
-app.post('/add-delivery', (req, res) => {
-    const { id_delivery, order_id_order, date, address, client_name, courier_name } = req.body;
-    if (!id_delivery || !order_id_order || !date || !address || !client_name || !courier_name) {
-        return res.status(400).send('Все поля обязательны');
-    }
-    const sql = "INSERT INTO delivery (id_delivery, order_id_order, date, address, client_name, courier_name) VALUES (?, ?, ?, ?, ?, ?)";
-    connection.query(sql, [id_delivery, order_id_order, date, address, client_name, courier_name], (err) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Ошибка добавления доставки');
-        } else {
-            res.send('Доставка успешно добавлена');
-        }
-    });
-});
 
 // Запуск сервера
 const PORT = 3000;
