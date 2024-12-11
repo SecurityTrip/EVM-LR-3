@@ -7,7 +7,9 @@ const fs = require("fs");
  * @param {string} fontPath - Путь к шрифту, поддерживающему кириллицу.
  * @param {string} header - Заголовок документа.
  */
-function createPDF(outputFileName, header) {
+async function createPDF() {
+    const outputFileName = "output.pdf";
+    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
     const fontPath = "timesnewromanpsmt.ttf";
     // Создаем новый PDF-документ
     const doc = new PDFDocument({ margin: 30, size: 'A4' });
@@ -58,12 +60,16 @@ function createPDF(outputFileName, header) {
     // Завершаем документ
     doc.end();
 
+    // Когда процесс завершится, вызовем callback
+    doc.on('finish', () => callback(null));
+    doc.on('finish', () => console.log("finish"));
+    doc.on('error', (err) => callback(err));
+
     console.log(`PDF создан: ${outputFileName}`);
 }
 
 // Экспортируем функцию для использования в других модулях
 module.exports = createPDF;
 
-const outputFileName = "output.pdf";
-const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
-createPDF(outputFileName, header);
+
+createPDF();

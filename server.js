@@ -37,32 +37,46 @@ connection.connect(err => {
 });
 
 // Формирование отчёта
-app.get("/api/createReport", (req, res) => {
+app.get("/api/createReport", async (req, res) => {
+    console.log("Запрос на формирование отчёта получен.");
+
     const outputFileName = "output.pdf";
-    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
 
-    createPDF(outputFileName, header);
+    try {
+        // Генерация PDF
+        await createPDF();
+        console.log("PDF отчёт успешно сгенерирован.");
 
-    const filePath = path.join(__dirname, outputFileName);
+        const filePath = path.join(__dirname, outputFileName);
+        console.log("Путь к файлу:", filePath);
 
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            console.error("Ошибка: PDF не найден или повреждён.");
-            return res.status(500).send({ error: "Ошибка формирования отчёта" });
-        }
-
-        res.download(filePath, outputFileName, (err) => {
+        fs.access(filePath, fs.constants.F_OK, (err) => {
             if (err) {
-                console.error("Ошибка при отправке файла:", err);
-                return res.status(500).send({ error: "Ошибка отправки файла" });
+                console.error("Файл не найден после генерации:", err);
+                return res.status(500).send({ error: "Ошибка формирования отчёта" });
             }
 
-            console.log("Отчёт успешно отправлен.");
-            fs.unlink(filePath, (err) => {
-                if (err) console.error("Ошибка удаления файла:", err);
+            res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('Content-Disposition', `attachment; filename=${outputFileName}`);
+            res.setHeader('Content-Type', 'application/pdf');
+
+            // Отправляем файл
+            res.sendFile(filePath, (err) => {
+                if (err) {
+                    console.error("Ошибка отправки файла:", err);
+                    return res.status(500).send({ error: "Ошибка отправки файла" });
+                }
+
+                console.log("Отчёт успешно отправлен.");
+                fs.unlink(filePath, (err) => {
+                    if (err) console.error("Ошибка удаления файла:", err);
+                });
             });
         });
-    });
+    } catch (error) {
+        console.error("Ошибка при формировании отчёта:", error.message);
+        res.status(500).send({ error: "Ошибка формирования отчёта" });
+    }
 });
 
 //CRUD

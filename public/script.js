@@ -291,7 +291,7 @@ window.onclick = function (event) {
 
 function generateReport() {
     console.log("Отправка запроса на сервер...");
-    fetch(`http://localhost:3000/api/createReport`, { method: "GET" }) // <-- изменено на /api/createReport
+    fetch(`http://localhost:3000/api/createReport`, { method: "GET" })
         .then((response) => {
             if (!response.ok) {
                 return response.json().then((err) => {
@@ -299,7 +299,8 @@ function generateReport() {
                 });
             }
 
-            return response.blob(); // Получаем файл в виде бинарных данных
+            // Получаем файл в виде бинарных данных
+            return response.blob();
         })
         .then((blob) => {
             const url = window.URL.createObjectURL(blob);
