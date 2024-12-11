@@ -63,3 +63,7 @@ function createPDF(outputFileName, header) {
 
 // Экспортируем функцию для использования в других модулях
 module.exports = createPDF;
+
+const outputFileName = "output.pdf";
+const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
+createPDF(outputFileName, header);
