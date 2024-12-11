@@ -290,29 +290,29 @@ window.onclick = function (event) {
 
 
 function generateReport() {
-    console.log("Запрос на генерацию отчёта отправлен.");
-    
-    fetch(`/api/report`, {
-        method: "GET",
-    })
+    console.log("Отправка запроса на сервер...");
+    fetch(`http://localhost:3000/api/createReport`, { method: "GET" }) // <-- изменено на /api/createReport
         .then((response) => {
             if (!response.ok) {
-                throw new Error("Ошибка формирования отчёта");
+                return response.json().then((err) => {
+                    throw new Error(err.error || "Неизвестная ошибка");
+                });
             }
-            return response.blob(); // Получаем файл как Blob
+
+            return response.blob(); // Получаем файл в виде бинарных данных
         })
         .then((blob) => {
-            // Создаём ссылку для скачивания файла
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "output.pdf"; // Имя сохраняемого файла
+            a.download = "output.pdf"; // Имя файла для сохранения
+            document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
-            console.log("Отчёт успешно скачан.");
+            a.remove();
+            console.log("Отчёт успешно загружен.");
         })
         .catch((error) => {
-            console.error("Ошибка:", error);
-            alert("Не удалось сформировать отчёт.");
+            console.error("Ошибка:", error.message);
+            alert(`Не удалось сформировать отчёт: ${error.message}`);
         });
-};
+}

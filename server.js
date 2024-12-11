@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const mysql = require("mysql2");
 const cors = require("cors");
+const fs = require("fs");
 const createPDF = require("./pdf.js");
 
 const app = express();
@@ -13,6 +14,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Указываем папку с вашими статическими файлами
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use((req, res, next) => {
+    console.log(`Запрос: ${req.method} ${req.url}`);
+    next();
+});
 
 // Подключение к базе данных
 const connection = mysql.createConnection({
@@ -30,7 +36,34 @@ connection.connect(err => {
     }
 });
 
+// Формирование отчёта
+app.get("/api/createReport", (req, res) => {
+    const outputFileName = "output.pdf";
+    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
 
+    createPDF(outputFileName, header);
+
+    const filePath = path.join(__dirname, outputFileName);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            console.error("Ошибка: PDF не найден или повреждён.");
+            return res.status(500).send({ error: "Ошибка формирования отчёта" });
+        }
+
+        res.download(filePath, outputFileName, (err) => {
+            if (err) {
+                console.error("Ошибка при отправке файла:", err);
+                return res.status(500).send({ error: "Ошибка отправки файла" });
+            }
+
+            console.log("Отчёт успешно отправлен.");
+            fs.unlink(filePath, (err) => {
+                if (err) console.error("Ошибка удаления файла:", err);
+            });
+        });
+    });
+});
 
 //CRUD
 // Добавление записи
@@ -187,40 +220,6 @@ app.get("/api/:table/:id", (req, res) => {
 });
 
 
-// Формирование отчёта
-app.get("/api/report", (req, res) => {
-    console.log("Запрос на формирование отчёта получен.");
-
-    const outputFileName = "output.pdf";
-    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
-
-    // Генерация PDF
-    createPDF(outputFileName, header);
-
-    // Дождитесь завершения записи файла, а затем отправьте его
-    const filePath = path.join(__dirname, outputFileName);
-
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            console.error("Ошибка при создании файла:", err);
-            return res.status(500).send("Ошибка формирования отчёта");
-        }
-
-        res.setHeader("Content-Disposition", `attachment; filename=${outputFileName}`);
-        res.setHeader("Content-Type", "application/pdf");
-        res.sendFile(filePath, (err) => {
-            if (err) {
-                console.error("Ошибка при отправке файла:", err);
-            } else {
-                console.log("Отчёт успешно отправлен.");
-                // Удаление файла после отправки (опционально)
-                fs.unlink(filePath, (err) => {
-                    if (err) console.error("Ошибка удаления файла:", err);
-                });
-            }
-        });
-    });
-});
 
 
 // Запуск сервера
