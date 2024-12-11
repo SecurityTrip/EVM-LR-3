@@ -50,6 +50,8 @@ app.get("/api/createReport", async (req, res) => {
         const filePath = path.join(__dirname, outputFileName);
         console.log("Путь к файлу:", filePath);
 
+        
+
         fs.access(filePath, fs.constants.F_OK, (err) => {
             if (err) {
                 console.error("Файл не найден после генерации:", err);
@@ -61,16 +63,12 @@ app.get("/api/createReport", async (req, res) => {
             res.setHeader('Content-Type', 'application/pdf');
 
             // Отправляем файл
-            res.sendFile(filePath, (err) => {
-                if (err) {
-                    console.error("Ошибка отправки файла:", err);
-                    return res.status(500).send({ error: "Ошибка отправки файла" });
-                }
+            // Используем поток для отправки файла
+            const fileStream = fs.createReadStream(filePath);
+            fileStream.pipe(res);
 
-                console.log("Отчёт успешно отправлен.");
-                fs.unlink(filePath, (err) => {
-                    if (err) console.error("Ошибка удаления файла:", err);
-                });
+            fileStream.on('error', (error) => {
+            res.status(500).send('Error occurred while reading the file');
             });
         });
     } catch (error) {

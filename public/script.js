@@ -292,24 +292,12 @@ window.onclick = function (event) {
 function generateReport() {
     console.log("Отправка запроса на сервер...");
     fetch(`http://localhost:3000/api/createReport`, { method: "GET" })
-        .then((response) => {
-            if (!response.ok) {
-                return response.json().then((err) => {
-                    throw new Error(err.error || "Неизвестная ошибка");
-                });
-            }
-
-            // Получаем файл в виде бинарных данных
-            return response.blob();
-        })
+        .then(response => response.blob())
         .then((blob) => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "output.pdf"; // Имя файла для сохранения
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "output.pdf"; // Имя файла для сохранения
+            link.click();
             console.log("Отчёт успешно загружен.");
         })
         .catch((error) => {
