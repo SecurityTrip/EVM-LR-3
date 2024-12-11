@@ -9,7 +9,9 @@
   "private": true,
   "dependencies": {
     "cors": "^2.8.5",
+    "EVM-LR-3": "file:",
     "express": "^4.21.1",
-    "mysql2": "^3.11.4"
+    "mysql2": "^3.11.4",
+    "pdfkit": "^0.15.1"
   }
 }

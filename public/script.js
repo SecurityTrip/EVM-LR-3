@@ -37,8 +37,63 @@ async function fetchTableData(tableKey) {
     }
 }
 
+// Рендер таблицы с кнопками управления
+function renderTable(data, tableName) {
+    const container = document.getElementById("table-container");
+    const title = document.getElementById("table-title");
+
+    if (!data.length) {
+        container.innerHTML = "<p>Данные отсутствуют</p>";
+        title.textContent = `Таблица: ${tableName}`;
+        return;
+    }
+
+    title.textContent = `Таблица: ${tableName}`;
+
+    // Добавляем кнопку добавления записи под заголовком
+    const addButtonHtml = `<button onclick="createRecord('${tableName}')">Добавить запись</button>`;
+
+    let tableHtml = "<table><thead><tr>";
+
+    // Генерация заголовков
+    Object.keys(data[0]).forEach((col) => {
+        tableHtml += `<th>${col}</th>`;
+    });
+    tableHtml += "<th>Действия</th></tr></thead><tbody>";
+
+    const tablePrimaryKeys = {
+        delivery: "id_delivery",
+        orders: "id_order",
+        product: "id_product",
+        shop: "id_shop",
+    };
+
+    // Генерация строк
+    data.forEach((row) => {
+        tableHtml += "<tr>";
+        Object.values(row).forEach((value) => {
+            tableHtml += `<td>${value}</td>`;
+        });
+
+        const primaryKey = tablePrimaryKeys[tableName]; // Получаем ключ для текущей таблицы
+
+        tableHtml += `
+      <td>
+        <button onclick="deleteRecord('${tableName}', ${row[primaryKey]})">Удалить</button>
+        <button onclick="editRecord('${tableName}', ${row[primaryKey]})">Изменить</button>
+      </td>
+    `;
+        tableHtml += "</tr>";
+    });
+
+    tableHtml += "</tbody></table>";
+
+    // Объединяем таблицу и кнопку
+    container.innerHTML = addButtonHtml + tableHtml;
+}
+
 //CRUD
-// Добавление записи
+// Create
 function createRecord(tableName) {
 
     // Определяем обязательные поля для каждой таблицы
@@ -101,61 +156,10 @@ function createRecord(tableName) {
 }
 
 
-// Рендер таблицы с кнопками управления
-function renderTable(data, tableName) {
-    const container = document.getElementById("table-container");
-    const title = document.getElementById("table-title");
+//TODO
+//Read
 
-    if (!data.length) {
-        container.innerHTML = "<p>Данные отсутствуют</p>";
-        title.textContent = `Таблица: ${tableName}`;
-        return;
-    }
-
-    title.textContent = `Таблица: ${tableName}`;
-
-    // Добавляем кнопку добавления записи под заголовком
-    const addButtonHtml = `<button onclick="createRecord('${tableName}')">Добавить запись</button>`;
-
-    let tableHtml = "<table><thead><tr>";
-
-    // Генерация заголовков
-    Object.keys(data[0]).forEach((col) => {
-        tableHtml += `<th>${col}</th>`;
-    });
-    tableHtml += "<th>Действия</th></tr></thead><tbody>";
-
-    const tablePrimaryKeys = {
-        delivery: "id_delivery",
-        orders: "id_order",
-        product: "id_product",
-        shop: "id_shop",
-    };
-
-    // Генерация строк
-    data.forEach((row) => {
-        tableHtml += "<tr>";
-        Object.values(row).forEach((value) => {
-            tableHtml += `<td>${value}</td>`;
-        });
-
-        const primaryKey = tablePrimaryKeys[tableName]; // Получаем ключ для текущей таблицы
-
-        tableHtml += `
-      <td>
-        <button onclick="deleteRecord('${tableName}', ${row[primaryKey]})">Удалить</button>
-        <button onclick="editRecord('${tableName}', ${row[primaryKey]})">Изменить</button>
-      </td>
-    `;
-        tableHtml += "</tr>";
-    });
-
-    tableHtml += "</tbody></table>";
-
-    // Объединяем таблицу и кнопку
-    container.innerHTML = addButtonHtml + tableHtml;
-}
-
+//Update
 function editRecord(tableName, id) {
     // Получаем данные записи по ID
     fetch(`/api/${tableName}/${id}`)
@@ -218,7 +222,7 @@ function editRecord(tableName, id) {
 }
 
 
-// Удаление записи
+// Delete
 function deleteRecord(tableName, id) {
     openModal(
         "Удалить запись",
@@ -285,4 +289,30 @@ window.onclick = function (event) {
 };
 
 
-
+function generateReport() {
+    console.log("Запрос на генерацию отчёта отправлен.");
+    
+    fetch(`/api/report`, {
+        method: "GET",
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Ошибка формирования отчёта");
+            }
+            return response.blob(); // Получаем файл как Blob
+        })
+        .then((blob) => {
+            // Создаём ссылку для скачивания файла
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "output.pdf"; // Имя сохраняемого файла
+            a.click();
+            window.URL.revokeObjectURL(url);
+            console.log("Отчёт успешно скачан.");
+        })
+        .catch((error) => {
+            console.error("Ошибка:", error);
+            alert("Не удалось сформировать отчёт.");
+        });
+};

@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const mysql = require("mysql2");
 const cors = require("cors");
+const createPDF = require("./pdf.js");
 
 const app = express();
 
@@ -185,6 +186,41 @@ app.get("/api/:table/:id", (req, res) => {
     );
 });
 
+
+// Формирование отчёта
+app.get("/api/report", (req, res) => {
+    console.log("Запрос на формирование отчёта получен.");
+
+    const outputFileName = "output.pdf";
+    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
+
+    // Генерация PDF
+    createPDF(outputFileName, header);
+
+    // Дождитесь завершения записи файла, а затем отправьте его
+    const filePath = path.join(__dirname, outputFileName);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            console.error("Ошибка при создании файла:", err);
+            return res.status(500).send("Ошибка формирования отчёта");
+        }
+
+        res.setHeader("Content-Disposition", `attachment; filename=${outputFileName}`);
+        res.setHeader("Content-Type", "application/pdf");
+        res.sendFile(filePath, (err) => {
+            if (err) {
+                console.error("Ошибка при отправке файла:", err);
+            } else {
+                console.log("Отчёт успешно отправлен.");
+                // Удаление файла после отправки (опционально)
+                fs.unlink(filePath, (err) => {
+                    if (err) console.error("Ошибка удаления файла:", err);
+                });
+            }
+        });
+    });
+});
 
 
 // Запуск сервера
