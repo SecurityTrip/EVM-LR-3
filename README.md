@@ -5,14 +5,17 @@
 1. Запустить ```npm install``` - устанавливает зависимости (если npm не работает перезагрузить комп)
 2. В коде в файле [server.js](server.js)
 ```js
-const connection = mysql.createConnection({
-    host: "localhost",
-    user: "admin",
-    database: "evm",
-    password: "admin"
+const pool = mysql.createPool({
+    host: 'localhost',
+    user: 'admin',
+    password: 'admin',
+    database: 'evm',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 ```
-нужно заменить ```user``` и ```password``` на свои имя пользователя и его пароль
+нужно заменить ```host```, ```user```, ```password```, ```database```  на свои имя пользователя и его пароль
 3. БД нужно создавать и заполнять с помощью файла [DB_create_fill.sql](DB_create_fill.sql)
 
 # Запуск
