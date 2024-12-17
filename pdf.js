@@ -5,10 +5,13 @@ const mysql = require("mysql2/promise");
 
 
 /**
- * Создает PDF-документ с заданным заголовком, именем файла и шрифтом.
- * @param {string} outputFileName - Имя выходного файла PDF.
- * @param {string} fontPath - Путь к шрифту, поддерживающему кириллицу.
- * @param {string} header - Заголовок документа.
+ * Создает PDF-документ.
+ * @param {mysql.createPool} pool - пул соединений
+ * @param {} month
+ * @param {} year 
+ * @param {} productName 
+ * @param {} firm 
+ * @param {} model
  */
 async function createPDF(pool = mysql.createPool({
                                                     host: 'localhost',
@@ -19,11 +22,12 @@ async function createPDF(pool = mysql.createPool({
                                                     connectionLimit: 10,
                                                     queueLimit: 0
                                                 }), 
-                                                month = 1, 
-                                                year = 2020, 
-                                                productName = "1", 
-                                                firm = "1", 
-                                                model = "1") {
+                                                    month = 1, 
+                                                    year = 2020, 
+                                                    productName = "1", 
+                                                    firm = "1", 
+                                                    model = "1") 
+                                                    {
 
     
 
