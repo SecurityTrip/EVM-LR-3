@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const mysql = require("mysql2");
 const cors = require("cors");
-const createPDF = require("./pdf.js");
+const fs = require("fs");
 
 const app = express();
 
@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Подключение к базе данных
 const connection = mysql.createConnection({
     host: "localhost",
-    user: "admin",
+    user: "root",
     database: "evm",
     password: "admin"
 });
@@ -38,6 +38,9 @@ app.post("/api/:table", (req, res) => {
     const { table } = req.params;
     const data = req.body;
 
+    console.log("Параметр table:", table);
+    console.log("Полученные данные:", data);
+
     // Определяем разрешённые таблицы и их поля
     const tableFields = {
         shop: ["email", "payment_for_delivery"],
@@ -46,13 +49,16 @@ app.post("/api/:table", (req, res) => {
         delivery: ["order_id_order", "date", "address", "client_name", "courier_name"],
     };
 
-    // Проверка наличия таблицы в списке разрешённых
-    if (!Object.keys(tableFields).includes(table)) {
-        return res.status(400).json({ error: "Таблица недоступна" });
+    // Проверка на существование таблицы
+    const requiredFields = tableFields[table];
+    if (!requiredFields) {
+        return res.status(400).json({
+            error: "Таблица недоступна или не существует.",
+            table: table
+        });
     }
 
-    // Проверка наличия обязательных полей
-    const requiredFields = tableFields[table];
+    // Проверка на наличие обязательных полей
     const missingFields = requiredFields.filter((field) => !(field in data));
     if (missingFields.length) {
         return res.status(400).json({
@@ -61,10 +67,10 @@ app.post("/api/:table", (req, res) => {
         });
     }
 
-    // Генерация запроса
+    // Генерация SQL-запроса
     const sql = `INSERT INTO ${table} (${requiredFields.join(", ")}) VALUES (${requiredFields.map(() => "?").join(", ")})`;
 
-    // Выполнение запроса
+    // Выполнение SQL-запроса
     connection.query(sql, requiredFields.map((field) => data[field]), (err, result) => {
         if (err) {
             console.error("Ошибка добавления:", err.message);
@@ -188,39 +194,147 @@ app.get("/api/:table/:id", (req, res) => {
 
 
 // Формирование отчёта
-app.get("/api/report", (req, res) => {
-    console.log("Запрос на формирование отчёта получен.");
+async function createPDF(outputFileName, month, year, productName, firm, model) {
+    return new Promise(async (resolve, reject) => {
+        const doc = new PDFDocument({ margin: 30, size: "A4" });
+        const tempPath = path.join(__dirname, outputFileName);
+        const writeStream = fs.createWriteStream(tempPath);
+        doc.pipe(writeStream);
 
-    const outputFileName = "output.pdf";
-    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
+        try {
+            // Заголовок
+            doc.fontSize(14).text("Сведения об исполненных заказах товаров в интернет-магазинах", { align: "center" });
+            doc.fontSize(12).text(`за ${month} месяц ${year} года`, { align: "center" });
+            doc.moveDown();
 
-    // Генерация PDF
-    createPDF(outputFileName, header);
+            // SQL-запрос для получения данных
+            const query = `
+                SELECT
+                    s.email AS 'Интернет-магазин',
+                    o.order_date AS 'Дата заказа',
+                    o.order_time AS 'Время заказа',
+                    p.price AS 'Цена, руб.',
+                    o.quantity AS 'Количество',
+                    o.client_name AS 'ФИО клиента',
+                    (p.price * o.quantity) AS 'Стоимость заказа, руб.'
+                FROM
+                    evm.product AS p
+                JOIN
+                    evm.orders AS o ON p.id_product = o.product_id_product
+                JOIN
+                    evm.shop AS s ON o.shop_id_shop = s.id_shop
+                WHERE
+                    p.name = ? AND p.firm = ? AND p.model = ?;
+            `;
 
-    // Дождитесь завершения записи файла, а затем отправьте его
-    const filePath = path.join(__dirname, outputFileName);
+            const [rows] = await connection.execute(query, [productName, firm, model]);
 
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            console.error("Ошибка при создании файла:", err);
-            return res.status(500).send("Ошибка формирования отчёта");
-        }
-
-        res.setHeader("Content-Disposition", `attachment; filename=${outputFileName}`);
-        res.setHeader("Content-Type", "application/pdf");
-        res.sendFile(filePath, (err) => {
-            if (err) {
-                console.error("Ошибка при отправке файла:", err);
-            } else {
-                console.log("Отчёт успешно отправлен.");
-                // Удаление файла после отправки (опционально)
-                fs.unlink(filePath, (err) => {
-                    if (err) console.error("Ошибка удаления файла:", err);
-                });
+            if (rows.length === 0) {
+                doc.text("Данные для отчёта не найдены.", { align: "center" });
+                doc.end();
+                return resolve();
             }
-        });
+
+            // Заголовки таблицы
+            const startX = 30;
+            const startY = 150;
+            const rowHeight = 20;
+            const colWidths = [150, 70, 70, 70, 70, 120, 100];
+            const columns = ["Интернет-магазин", "Дата", "Время", "Цена", "Кол-во", "ФИО клиента", "Стоимость"];
+
+            doc.rect(startX, startY, 540, rowHeight).stroke();
+            let currentX = startX;
+            columns.forEach((col, i) => {
+                doc.text(col, currentX, startY + 5, { width: colWidths[i], align: "center" });
+                currentX += colWidths[i];
+            });
+
+            // Данные таблицы
+            let currentY = startY + rowHeight;
+            rows.forEach((row) => {
+                currentX = startX;
+                Object.values(row).forEach((value, i) => {
+                    doc.text(value.toString(), currentX, currentY + 5, { width: colWidths[i], align: "center" });
+                    currentX += colWidths[i];
+                });
+                currentY += rowHeight;
+            });
+
+            doc.end();
+
+            writeStream.on("finish", () => resolve());
+        } catch (error) {
+            reject(error);
+        }
     });
+}
+
+// Маршрут для генерации отчёта
+app.post("/api/report", async (req, res) => {
+    const { productName, firm, model, month, year } = req.body;
+
+    console.log("Получены параметры:", { productName, firm, model, month, year });
+
+    if (!productName || !firm || !model || !month || !year) {
+        return res.status(400).json({ error: "Все параметры обязательны." });
+    }
+
+    try {
+        const outputFileName = "output.pdf";
+        await createPDF(outputFileName, month, year, productName, firm, model);
+
+        const filePath = path.join(__dirname, outputFileName);
+        res.download(filePath, outputFileName, () => {
+            fs.unlinkSync(filePath); // Удаление файла после отправки
+        });
+    } catch (error) {
+        console.error("Ошибка генерации отчёта:", error.message);
+        res.status(500).json({ error: "Ошибка сервера при создании отчёта." });
+    }
 });
+
+
+
+
+// // Получение отчёта по запросу с параметрами
+// app.get("/api/report/custom", (req, res) => {
+//     const { name, firm, model } = req.query;
+//
+//     console.log("Получены параметры запроса:", { name, firm, model });
+//     const sql = `
+//         SELECT
+//             p.name AS 'Название товара',
+//             p.firm AS 'Фирма',
+//             p.model AS 'Модель',
+//             s.email AS 'Интернет-магазин',
+//             o.order_date AS 'Дата заказа',
+//             o.order_time AS 'Время заказа',
+//             CAST(p.price AS DECIMAL(10, 2)) AS 'Цена, руб.',
+//             CAST(o.quantity AS INT) AS 'Количество',
+//             o.client_name AS 'ФИО клиента',
+//             CAST(p.price AS DECIMAL(10, 2)) * CAST(o.quantity AS INT) AS 'Стоимость заказа, руб.'
+//         FROM
+//             evm.product AS p
+//         JOIN
+//             evm.orders AS o ON p.id_product = o.product_id_product
+//         JOIN
+//             evm.shop AS s ON o.shop_id_shop = s.id_shop
+//         WHERE
+//             p.name = ? AND
+//             p.firm = ? AND
+//             p.model = ?
+//     `;
+//
+//     connection.query(sql, [name, firm, model], (err, results) => {
+//         if (err) {
+//             console.error("Ошибка при получении отчёта:", err.message);
+//             return res.status(500).json({ error: "Ошибка сервера" });
+//         }
+//         res.json(results);
+//     });
+// });
+
+
 
 
 // Запуск сервера
@@ -228,3 +342,5 @@ const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Сервер запущен на http://localhost:${PORT}`);
 });
+
+
