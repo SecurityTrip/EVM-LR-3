@@ -16,6 +16,7 @@ const pool = mysql.createPool({
 });
 ```
 нужно заменить ```host```, ```user```, ```password```, ```database```  на свои имя пользователя и его пароль
+
 3. БД нужно создавать и заполнять с помощью файла [DB_create_fill.sql](DB_create_fill.sql)
 
 # Запуск
