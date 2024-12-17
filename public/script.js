@@ -289,30 +289,148 @@ window.onclick = function (event) {
 };
 
 
+// function generateReport() {
+//     console.log("Запрос на генерацию отчёта отправлен.");
+//
+//     fetch(`/api/report`, {
+//         method: "GET",
+//     })
+//         .then((response) => {
+//             if (!response.ok) {
+//                 throw new Error("Ошибка формирования отчёта");
+//             }
+//             return response.blob(); // Получаем файл как Blob
+//         })
+//         .then((blob) => {
+//             // Создаём ссылку для скачивания файла
+//             const url = window.URL.createObjectURL(blob);
+//             const a = document.createElement("a");
+//             a.href = url;
+//             a.download = "output.pdf"; // Имя сохраняемого файла
+//             a.click();
+//             window.URL.revokeObjectURL(url);
+//             console.log("Отчёт успешно скачан.");
+//         })
+//         .catch((error) => {
+//             console.error("Ошибка:", error);
+//             alert("Не удалось сформировать отчёт.");
+//         });
+// };
+document.getElementById("generateReportButton").addEventListener("click", generateReport);
+
 function generateReport() {
-    console.log("Запрос на генерацию отчёта отправлен.");
-    
-    fetch(`/api/report`, {
-        method: "GET",
+    // Получаем данные из полей формы
+    const productName = document.getElementById("productName").value.trim();
+    const firm = document.getElementById("firm").value.trim();
+    const model = document.getElementById("model").value.trim();
+    const month = document.getElementById("month").value;
+    const year = document.getElementById("year").value;
+
+    // Проверка на заполнение всех полей
+    if (!productName || !firm || !model || !month || !year) {
+        alert("Пожалуйста, заполните все поля!");
+        return;
+    }
+
+    // Отправка POST-запроса на сервер
+    fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productName, firm, model, month, year })
     })
         .then((response) => {
             if (!response.ok) {
-                throw new Error("Ошибка формирования отчёта");
+                throw new Error("Ошибка формирования отчёта.");
             }
-            return response.blob(); // Получаем файл как Blob
+            return response.blob();
         })
         .then((blob) => {
-            // Создаём ссылку для скачивания файла
+            // Создаём ссылку для скачивания PDF-файла
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "output.pdf"; // Имя сохраняемого файла
+            a.download = "output.pdf";
             a.click();
             window.URL.revokeObjectURL(url);
             console.log("Отчёт успешно скачан.");
+
+            // Закрываем модальное окно после успешного скачивания
+            closeModal();
         })
         .catch((error) => {
             console.error("Ошибка:", error);
             alert("Не удалось сформировать отчёт.");
         });
-};
+}
+
+// Открытие модального окна
+function openReportModal() {
+    document.getElementById("modal").style.display = "block";
+}
+
+// Закрытие модального окна
+function closeModal() {
+    document.getElementById("modal").style.display = "none";
+}
+
+// Закрытие модального окна при клике вне модального контента
+window.addEventListener("click", (event) => {
+    if (event.target === document.getElementById("modal")) {
+        closeModal();
+    }
+});
+
+// function generateCustomReport() {
+//     const productName = prompt("Введите название товара:");
+//     const firm = prompt("Введите фирму товара:");
+//     const model = prompt("Введите модель товара:");
+//
+//     if (!productName || !firm || !model) {
+//         alert("Все поля должны быть заполнены!");
+//         return;
+//     }
+//
+//     console.log("Отправка запроса с параметрами:", { productName, firm, model });
+//     fetch(`/api/report/custom?name=${encodeURIComponent(productName)}&firm=${encodeURIComponent(firm)}&model=${encodeURIComponent(model)}`)
+//         .then((response) => {
+//             if (!response.ok) {
+//                 throw new Error("Ошибка при получении отчёта");
+//             }
+//             return response.json();
+//         })
+//         .then((data) => {
+//             renderReportTable(data);
+//         })
+//         .catch((error) => {
+//             console.error("Ошибка:", error);
+//             alert("Не удалось получить отчёт.");
+//         });
+// }
+//
+// function renderReportTable(data) {
+//     const container = document.getElementById("table-container");
+//     let tableHtml = "<table border='1'><thead><tr>";
+//
+//     if (data.length === 0) {
+//         container.innerHTML = "<p>Данные для отчёта отсутствуют</p>";
+//         return;
+//     }
+//
+//     // Заголовки таблицы
+//     Object.keys(data[0]).forEach((key) => {
+//         tableHtml += `<th>${key}</th>`;
+//     });
+//     tableHtml += "</tr></thead><tbody>";
+//
+//     // Строки таблицы
+//     data.forEach((row) => {
+//         tableHtml += "<tr>";
+//         Object.values(row).forEach((value) => {
+//             tableHtml += `<td>${value}</td>`;
+//         });
+//         tableHtml += "</tr>";
+//     });
+//
+//     tableHtml += "</tbody></table>";
+//     container.innerHTML = tableHtml;
+// }
