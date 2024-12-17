@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const mysql = require("mysql2");
+const mysql = require("mysql2/promise");
 const cors = require("cors");
 const fs = require("fs");
 const createPDF = require("./pdf.js");
@@ -20,21 +20,27 @@ app.use((req, res, next) => {
     next();
 });
 
-// Подключение к базе данных
-const connection = mysql.createConnection({
-    host: "localhost",
-    user: "admin",
-    database: "evm",
-    password: "admin"
+// Создаем пул соединений
+const pool = mysql.createPool({
+    host: 'localhost',
+    user: 'admin',
+    password: 'admin',
+    database: 'evm',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-connection.connect(err => {
-    if (err) {
-        console.error("Ошибка подключения к базе данных:", err.message);
-    } else {
-        console.log("Подключение к серверу MySQL успешно установлено");
+// Проверяем подключение при запуске сервера
+(async () => {
+    try {
+        const connection = await pool.getConnection();
+        console.log('Успешное подключение к базе данных!');
+        connection.release(); // Освобождаем соединение
+    } catch (err) {
+        console.error('Ошибка подключения к базе данных:', err.message);
     }
-});
+})();
 
 // Формирование отчёта
 app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) => {
@@ -51,7 +57,7 @@ app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) =>
 
     try {
         // Генерация PDF
-        await createPDF(month, year, name, firm, model);
+        await createPDF1(pool, month, year, name, firm, model);
         console.log("PDF отчёт успешно сгенерирован.");
 
         const filePath = path.join(__dirname, outputFileName);

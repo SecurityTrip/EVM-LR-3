@@ -1,22 +1,8 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
-const mysql = require("mysql2");
+const mysql = require("mysql2/promise");
 
 
-const connection = mysql.createConnection({
-    host: "localhost",
-    user: "admin",
-    database: "evm",
-    password: "admin"
-});
-
-connection.connect(err => {
-    if (err) {
-        console.error("Ошибка подключения к базе данных:", err.message);
-    } else {
-        console.log("Подключение к серверу MySQL успешно установлено");
-    }
-});
 
 /**
  * Создает PDF-документ с заданным заголовком, именем файла и шрифтом.
@@ -24,10 +10,26 @@ connection.connect(err => {
  * @param {string} fontPath - Путь к шрифту, поддерживающему кириллицу.
  * @param {string} header - Заголовок документа.
  */
-async function createPDF(month, year, productName, firm, model) {
+async function createPDF(pool = mysql.createPool({
+                                                    host: 'localhost',
+                                                    user: 'admin',
+                                                    password: 'admin',
+                                                    database: 'evm',
+                                                    waitForConnections: true,
+                                                    connectionLimit: 10,
+                                                    queueLimit: 0
+                                                }), 
+                                                month = 1, 
+                                                year = 2020, 
+                                                productName = "1", 
+                                                firm = "1", 
+                                                model = "1") {
+
+    
+
     const outputFileName = "output.pdf";
-    const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
     const fontPath = "timesnewromanpsmt.ttf";
+
     // Создаем новый PDF-документ
     const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
@@ -63,13 +65,15 @@ async function createPDF(month, year, productName, firm, model) {
             p.name = ? AND p.firm = ? AND p.model = ?;
     `;
 
-    const [rows] = await connection.execute(query, [productName, firm, model]);
+    console.log("Параметры запроса:", { productName, firm, model });
+
+    const [rows] = await pool.execute(query, [productName, firm, model]);
     
 
     if (rows.length === 0) {
         doc.text("Данные для отчёта не найдены.", { align: "center" });
         doc.end();
-        return resolve();
+        return;
     }
 
     // Заголовки таблицы
