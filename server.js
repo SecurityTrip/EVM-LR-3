@@ -37,8 +37,15 @@ connection.connect(err => {
 });
 
 // Формирование отчёта
-app.get("/api/createReport", async (req, res) => {
+app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) => {
     console.log("Запрос на формирование отчёта получен.");
+    const { name, firm, model, month, year } = req.params;
+
+    console.log("Название товара:", name);
+    console.log("Фирма:", firm);
+    console.log("Модель:", model);
+    console.log("Месяц:", month);
+    console.log("Год:", year);
 
     const outputFileName = "output.pdf";
 

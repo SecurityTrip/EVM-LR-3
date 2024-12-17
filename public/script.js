@@ -261,6 +261,50 @@ function refreshTable(tableName) {
         });
 }
 
+function openReportModal() {
+    openModal(
+        "Сформировать отчёт",
+        `
+        <form id="reportForm">
+        <label>Название товара:</label>
+        <input type="text" id="productName" placeholder="Введите название товара" required><br><br>
+        <label>Фирма:</label>
+        <input type="text" id="firm" placeholder="Введите фирму" required><br><br>
+        <label>Модель:</label>
+        <input type="text" id="model" placeholder="Введите модель" required><br><br>
+        <label>Месяц:</label>
+        <input type="number" id="month" min="1" max="12" placeholder="1-12" required><br><br>
+        <label>Год:</label>
+        <input type="number" id="year" min="2000" max="2100" placeholder="2024" required><br><br>
+        </form>`,
+        () => {
+            const productName = document.getElementById("productName").value;
+            const firm = document.getElementById("firm").value;
+            const model = document.getElementById("model").value;
+            const month = document.getElementById("month").value;
+            const year = document.getElementById("year").value;
+
+            generateReport(productName, firm, model, month, year);
+        }
+    );
+}
+
+function generateReport(name, firm, model, month, year) {
+    console.log("Отправка запроса на сервер...");
+    fetch(`http://localhost:3000/api/createReport/${name}/${firm}/${model}/${month}/${year}`, { method: "GET" })
+        .then(response => response.blob())
+        .then((blob) => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "output.pdf"; // Имя файла для сохранения
+            link.click();
+            console.log("Отчёт успешно загружен.");
+        })
+        .catch((error) => {
+            console.error("Ошибка:", error.message);
+            alert(`Не удалось сформировать отчёт: ${error.message}`);
+        });
+}
 
 function openModal(title, bodyContent, actionCallback) {
     const modal = document.getElementById("modal");
@@ -287,21 +331,3 @@ window.onclick = function (event) {
         closeModal();
     }
 };
-
-
-function generateReport() {
-    console.log("Отправка запроса на сервер...");
-    fetch(`http://localhost:3000/api/createReport`, { method: "GET" })
-        .then(response => response.blob())
-        .then((blob) => {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "output.pdf"; // Имя файла для сохранения
-            link.click();
-            console.log("Отчёт успешно загружен.");
-        })
-        .catch((error) => {
-            console.error("Ошибка:", error.message);
-            alert(`Не удалось сформировать отчёт: ${error.message}`);
-        });
-}
