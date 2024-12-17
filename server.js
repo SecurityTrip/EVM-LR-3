@@ -51,7 +51,7 @@ app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) =>
 
     try {
         // Генерация PDF
-        await createPDF();
+        await createPDF(month, year, name, firm, model);
         console.log("PDF отчёт успешно сгенерирован.");
 
         const filePath = path.join(__dirname, outputFileName);

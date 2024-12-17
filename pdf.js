@@ -1,5 +1,22 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
+const mysql = require("mysql2");
+
+
+const connection = mysql.createConnection({
+    host: "localhost",
+    user: "admin",
+    database: "evm",
+    password: "admin"
+});
+
+connection.connect(err => {
+    if (err) {
+        console.error("Ошибка подключения к базе данных:", err.message);
+    } else {
+        console.log("Подключение к серверу MySQL успешно установлено");
+    }
+});
 
 /**
  * Создает PDF-документ с заданным заголовком, именем файла и шрифтом.
@@ -7,7 +24,7 @@ const fs = require("fs");
  * @param {string} fontPath - Путь к шрифту, поддерживающему кириллицу.
  * @param {string} header - Заголовок документа.
  */
-async function createPDF() {
+async function createPDF(month, year, productName, firm, model) {
     const outputFileName = "output.pdf";
     const header = "Сведения об исполненных заказах товаров в интернет-магазинах";
     const fontPath = "timesnewromanpsmt.ttf";
@@ -22,42 +39,64 @@ async function createPDF() {
     doc.pipe(fs.createWriteStream(outputFileName));
 
     // Заголовок
-    doc.fontSize(12).text(header, { align: "center" });
-    doc.text(`за ______ месяц ______ года`, { align: "center" });
+    doc.fontSize(14).text("Сведения об исполненных заказах товаров в интернет-магазинах", { align: "center" });
+    doc.fontSize(12).text(`за ${month} месяц ${year} года`, { align: "center" });
     doc.moveDown();
 
-    // Рисуем таблицу
-    const startX = 30;
-    const startY = 100;
-    const tableWidth = 540;
-    const rowHeight = 30;
-    const colWidths = [100, 70, 70, 50, 50, 120, 80]; // Ширина колонок
-    const columns = [
-        "Интернет-магазин", "Дата заказа", "Время заказа", "Цена, руб.",
-        "Количество", "ФИО клиента", "Стоимость заказа, руб."
-    ];
+    // SQL-запрос для получения данных
+    const query = `
+        SELECT
+            s.email AS 'Интернет-магазин',
+            o.order_date AS 'Дата заказа',
+            o.order_time AS 'Время заказа',
+            p.price AS 'Цена, руб.',
+            o.quantity AS 'Количество',
+            o.client_name AS 'ФИО клиента',
+            (p.price * o.quantity) AS 'Стоимость заказа, руб.'
+        FROM
+            evm.product AS p
+        JOIN
+            evm.orders AS o ON p.id_product = o.product_id_product
+        JOIN
+            evm.shop AS s ON o.shop_id_shop = s.id_shop
+        WHERE
+            p.name = ? AND p.firm = ? AND p.model = ?;
+    `;
 
-    // Рисуем заголовки таблицы
-    doc.rect(startX, startY, tableWidth, rowHeight).stroke();
+    const [rows] = await connection.execute(query, [productName, firm, model]);
+    
+
+    if (rows.length === 0) {
+        doc.text("Данные для отчёта не найдены.", { align: "center" });
+        doc.end();
+        return resolve();
+    }
+
+    // Заголовки таблицы
+    const startX = 30;
+    const startY = 150;
+    const rowHeight = 20;
+    const colWidths = [150, 70, 70, 70, 70, 120, 100];
+    const columns = ["Интернет-магазин", "Дата", "Время", "Цена", "Кол-во", "ФИО клиента", "Стоимость"];
+
+    doc.rect(startX, startY, 540, rowHeight).stroke();
     let currentX = startX;
     columns.forEach((col, i) => {
-        const colWidth = colWidths[i];
-        doc.text(col, currentX + 5, startY + 10, { width: colWidth, align: "center" });
-        doc.rect(currentX, startY, colWidth, rowHeight).stroke();
-        currentX += colWidth;
+        doc.text(col, currentX, startY + 5, { width: colWidths[i], align: "center" });
+        currentX += colWidths[i];
     });
 
-    // Добавляем строки для данных
-    doc.rect(startX, startY + rowHeight, tableWidth, rowHeight).stroke(); // Первая строка
+    // Данные таблицы
+    let currentY = startY + rowHeight;
+    rows.forEach((row) => {
+        currentX = startX;
+        Object.values(row).forEach((value, i) => {
+            doc.text(value.toString(), currentX, currentY + 5, { width: colWidths[i], align: "center" });
+            currentX += colWidths[i];
+        });
+        currentY += rowHeight;
+    });
 
-    // Подписи под таблицей
-    doc.moveDown(3).text("Название товара: ______________________________", startX);
-    doc.text("Фирма: _________________________________________", startX);
-    doc.text("Модель: ________________________________________", startX);
-    doc.moveDown();
-    doc.text("Итого по модели: ............................................... руб. ", startX);
-
-    // Завершаем документ
     doc.end();
 
     // Когда процесс завершится, вызовем callback
