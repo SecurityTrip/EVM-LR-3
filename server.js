@@ -57,13 +57,11 @@ app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) =>
 
     try {
         // Генерация PDF
-        await createPDF1(pool, month, year, name, firm, model);
+        await createPDF(pool, month, year, name, firm, model);
         console.log("PDF отчёт успешно сгенерирован.");
 
         const filePath = path.join(__dirname, outputFileName);
         console.log("Путь к файлу:", filePath);
-
-        
 
         fs.access(filePath, fs.constants.F_OK, (err) => {
             if (err) {
@@ -76,12 +74,11 @@ app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) =>
             res.setHeader('Content-Type', 'application/pdf');
 
             // Отправляем файл
-            // Используем поток для отправки файла
             const fileStream = fs.createReadStream(filePath);
             fileStream.pipe(res);
 
             fileStream.on('error', (error) => {
-            res.status(500).send('Error occurred while reading the file');
+                res.status(500).send('Error occurred while reading the file');
             });
         });
     } catch (error) {
@@ -90,13 +87,12 @@ app.get("/api/createReport/:name/:firm/:model/:month/:year", async (req, res) =>
     }
 });
 
-//CRUD
+// CRUD
 // Добавление записи
-app.post("/api/:table", (req, res) => {
+app.post("/api/:table", async (req, res) => {
     const { table } = req.params;
     const data = req.body;
 
-    // Определяем разрешённые таблицы и их поля
     const tableFields = {
         shop: ["email", "payment_for_delivery"],
         product: ["name", "firm", "model", "tech_spec", "price", "warranty_period", "image"],
@@ -104,12 +100,10 @@ app.post("/api/:table", (req, res) => {
         delivery: ["order_id_order", "date", "address", "client_name", "courier_name"],
     };
 
-    // Проверка наличия таблицы в списке разрешённых
     if (!Object.keys(tableFields).includes(table)) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    // Проверка наличия обязательных полей
     const requiredFields = tableFields[table];
     const missingFields = requiredFields.filter((field) => !(field in data));
     if (missingFields.length) {
@@ -119,46 +113,40 @@ app.post("/api/:table", (req, res) => {
         });
     }
 
-    // Генерация запроса
     const sql = `INSERT INTO ${table} (${requiredFields.join(", ")}) VALUES (${requiredFields.map(() => "?").join(", ")})`;
 
-    // Выполнение запроса
-    connection.query(sql, requiredFields.map((field) => data[field]), (err, result) => {
-        if (err) {
-            console.error("Ошибка добавления:", err.message);
-            return res.status(500).json({ error: "Ошибка сервера", details: err.message });
-        }
+    try {
+        const [result] = await pool.query(sql, requiredFields.map((field) => data[field]));
         res.json({ message: "Запись добавлена", insertId: result.insertId });
-    });
+    } catch (err) {
+        console.error("Ошибка добавления:", err.message);
+        res.status(500).json({ error: "Ошибка сервера", details: err.message });
+    }
 });
 
-
 // Получение данных из таблицы
-app.get("/api/:table", (req, res) => {
-    const table = req.params.table;
+app.get("/api/:table", async (req, res) => {
+    const { table } = req.params;
 
-    // Проверка на доступные таблицы
     const allowedTables = ["delivery", "orders", "product", "shop"];
     if (!allowedTables.includes(table)) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    // Запрос к базе данных
-    connection.query(`SELECT * FROM ${table}`, (err, results) => {
-        if (err) {
-            console.error("Ошибка запроса:", err.message);
-            return res.status(500).json({ error: "Ошибка сервера" });
-        }
+    try {
+        const [results] = await pool.query(`SELECT * FROM ${table}`);
         res.json(results);
-    });
+    } catch (err) {
+        console.error("Ошибка запроса:", err.message);
+        res.status(500).json({ error: "Ошибка сервера" });
+    }
 });
 
 // Изменение записи
-app.put("/api/:table/:id", (req, res) => {
+app.put("/api/:table/:id", async (req, res) => {
     const { table, id } = req.params;
     const data = req.body;
 
-    // Список разрешенных таблиц и их ключей
     const tableKeys = {
         delivery: "id_delivery",
         orders: "id_order",
@@ -166,53 +154,47 @@ app.put("/api/:table/:id", (req, res) => {
         shop: "id_shop",
     };
 
-    // Проверяем, существует ли таблица
     const primaryKey = tableKeys[table];
     if (!primaryKey) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    connection.query(`UPDATE ${table} SET ? WHERE ${primaryKey} = ?`, [data, id], (err, result) => {
-        if (err) {
-            console.error("Ошибка изменения:", err.message);
-            return res.status(500).json({ error: "Ошибка сервера" });
-        }
+    try {
+        const [result] = await pool.query(`UPDATE ${table} SET ? WHERE ${primaryKey} = ?`, [data, id]);
         res.json({ message: "Запись обновлена", affectedRows: result.affectedRows });
-    });
+    } catch (err) {
+        console.error("Ошибка изменения:", err.message);
+        res.status(500).json({ error: "Ошибка сервера" });
+    }
 });
 
-
 // Удаление записи
-app.delete("/api/:table/:id", (req, res) => {
+app.delete("/api/:table/:id", async (req, res) => {
     const { table, id } = req.params;
 
-    // Список разрешенных таблиц и их ключей
     const tableKeys = {
         delivery: "id_delivery",
-        order: "id_orders",
+        orders: "id_order",
         product: "id_product",
         shop: "id_shop",
     };
 
-    // Проверяем, существует ли таблица
     const primaryKey = tableKeys[table];
     if (!primaryKey) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    // Выполняем запрос на удаление
-    connection.query(`DELETE FROM ${table} WHERE ${primaryKey} = ?`, [id], (err, result) => {
-        if (err) {
-            console.error("Ошибка удаления:", err.message);
-            return res.status(500).json({ error: "Ошибка сервера" });
-        }
+    try {
+        const [result] = await pool.query(`DELETE FROM ${table} WHERE ${primaryKey} = ?`, [id]);
         res.json({ message: "Запись удалена", affectedRows: result.affectedRows });
-    });
+    } catch (err) {
+        console.error("Ошибка удаления:", err.message);
+        res.status(500).json({ error: "Ошибка сервера" });
+    }
 });
 
-
 // Получение записи по ID
-app.get("/api/:table/:id", (req, res) => {
+app.get("/api/:table/:id", async (req, res) => {
     const { table, id } = req.params;
 
     const tablePrimaryKeys = {
@@ -223,29 +205,21 @@ app.get("/api/:table/:id", (req, res) => {
     };
 
     const primaryKey = tablePrimaryKeys[table];
-
     if (!primaryKey) {
         return res.status(400).json({ error: "Таблица недоступна" });
     }
 
-    connection.query(
-        `SELECT * FROM ${table} WHERE ${primaryKey} = ?`,
-        [id],
-        (err, results) => {
-            if (err) {
-                console.error("Ошибка при получении записи:", err.message);
-                return res.status(500).json({ error: "Ошибка сервера" });
-            }
-            if (results.length === 0) {
-                return res.status(404).json({ error: "Запись не найдена" });
-            }
-            res.json(results[0]); // Возвращаем первую запись
+    try {
+        const [results] = await pool.query(`SELECT * FROM ${table} WHERE ${primaryKey} = ?`, [id]);
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Запись не найдена" });
         }
-    );
+        res.json(results[0]);
+    } catch (err) {
+        console.error("Ошибка при получении записи:", err.message);
+        res.status(500).json({ error: "Ошибка сервера" });
+    }
 });
-
-
-
 
 // Запуск сервера
 const PORT = 3000;
