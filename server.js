@@ -22,10 +22,11 @@ app.use((req, res, next) => {
 
 // Создаем пул соединений
 const pool = mysql.createPool({
-    host: 'localhost',
+    host: '127.0.0.1',
     user: 'admin',
     password: 'admin',
     database: 'evm',
+    port: 33060,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0

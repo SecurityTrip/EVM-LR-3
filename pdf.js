@@ -18,6 +18,7 @@ async function createPDF(pool = mysql.createPool({
                                                     user: 'admin',
                                                     password: 'admin',
                                                     database: 'evm',
+                                                    port: 33060,
                                                     waitForConnections: true,
                                                     connectionLimit: 10,
                                                     queueLimit: 0
@@ -83,27 +84,59 @@ async function createPDF(pool = mysql.createPool({
     // Заголовки таблицы
     const startX = 30;
     const startY = 150;
-    const rowHeight = 20;
-    const colWidths = [150, 70, 70, 70, 70, 120, 100];
-    const columns = ["Интернет-магазин", "Дата", "Время", "Цена", "Кол-во", "ФИО клиента", "Стоимость"];
+    const rowHeight = 35;
+    const colWidths = [120, 65, 65, 65, 65, 60, 100];
+    const columns = ["Интернет-магазин", "Дата заказа", "Время заказа", "Цена, руб.", "Количество", "ФИО клиента", "Стоимость заказа, руб."];
 
+    // Рисуем рамку для заголовков
     doc.rect(startX, startY, 540, rowHeight).stroke();
+
     let currentX = startX;
+
+    // Вывод заголовков с разграничением столбцов
     columns.forEach((col, i) => {
         doc.text(col, currentX, startY + 5, { width: colWidths[i], align: "center" });
+        if (i > 0) {
+            doc.moveTo(currentX, startY).lineTo(currentX, startY + rowHeight).stroke();
+        }
         currentX += colWidths[i];
     });
 
     // Данные таблицы
     let currentY = startY + rowHeight;
+
     rows.forEach((row) => {
         currentX = startX;
+
+        // Рисуем рамку для строки
+        doc.rect(startX, currentY, 540, rowHeight).stroke();
+
+        // Вывод данных строки с разграничением столбцов
         Object.values(row).forEach((value, i) => {
             doc.text(value.toString(), currentX, currentY + 5, { width: colWidths[i], align: "center" });
+            if (i > 0) {
+                doc.moveTo(currentX, currentY).lineTo(currentX, currentY + rowHeight).stroke();
+            }
             currentX += colWidths[i];
         });
+
         currentY += rowHeight;
     });
+
+    
+
+    // Текст под таблицей
+    const footerStartY = currentY + 10;
+
+    doc.text(`Название товара: ${productName}`, startX, footerStartY);
+    doc.text(`Фирма: ${firm}`, startX, footerStartY + 15);
+    doc.text(`Модель: ${model}`, startX, footerStartY + 30);
+
+    const totalCost = rows.reduce((sum, row) => sum + (parseFloat(row["Стоимость заказа, руб."]) || 0), 0);
+    // Итог по модели
+    doc.text(`Итого по модели: .............................................. ${totalCost.toFixed(2)}`, startX, footerStartY + 60);
+    doc.moveTo(startX, footerStartY + 80).lineTo(startX + 540, footerStartY + 80).stroke();
+
 
     doc.end();
 
