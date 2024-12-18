@@ -51,28 +51,35 @@ async function createPDF(pool = mysql.createPool({
     doc.moveDown();
 
     // SQL-запрос для получения данных
-    const query = `
-        SELECT
-            s.email AS 'Интернет-магазин',
-            o.order_date AS 'Дата заказа',
-            o.order_time AS 'Время заказа',
-            p.price AS 'Цена, руб.',
-            o.quantity AS 'Количество',
-            o.client_name AS 'ФИО клиента',
-            (p.price * o.quantity) AS 'Стоимость заказа, руб.'
-        FROM
-            evm.product AS p
-        JOIN
-            evm.orders AS o ON p.id_product = o.product_id_product
-        JOIN
-            evm.shop AS s ON o.shop_id_shop = s.id_shop
-        WHERE
-            p.name = ? AND p.firm = ? AND p.model = ?;
-    `;
+    const query = ` 
+    SELECT 
+    s.email AS 'Интернет-магазин', 
+    o.order_date AS 'Дата заказа', 
+    o.order_time AS 'Время заказа', 
+    p.price AS 'Цена, руб.', 
+    o.quantity AS 'Количество', 
+    o.client_name AS 'ФИО клиента', 
+    (p.price * o.quantity) AS 'Стоимость заказа, руб.', 
+    d.date AS 'Дата доставки' 
+    FROM 
+    evm.product AS p 
+    JOIN 
+    evm.orders AS o ON p.id_product = o.product_id_product 
+    JOIN 
+    evm.shop AS s ON o.shop_id_shop = s.id_shop 
+    JOIN 
+    evm.delivery AS d ON o.id_order = d.order_id_order 
+    WHERE 
+    p.name = ? AND  
+    p.firm = ? AND  
+    p.model = ? AND 
+    MONTH(d.date) = ? AND 
+    YEAR(d.date) = ?; 
+    `; 
 
-    console.log("Параметры запроса:", { productName, firm, model });
+    console.log("Параметры запроса:", { productName, firm, model }); 
 
-    const [rows] = await pool.execute(query, [productName, firm, model]);
+    const [rows] = await pool.execute(query, [productName, firm, model, month, year]);
     
 
     if (rows.length === 0) {
